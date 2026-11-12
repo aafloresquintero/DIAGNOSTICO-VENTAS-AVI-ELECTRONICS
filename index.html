@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registro de venta perdida · Mini app WhatsApp</title>
+<meta name="description" content="Simulador y panel de la mini app de WhatsApp para registrar motivos de rechazo de compra: canal, categoría, producto y motivo.">
+<style>
+  :root{
+    --bg:#f4f5f2; --surface:#ffffff; --ink:#1c2321; --muted:#5c6764; --line:#dfe3df;
+    --accent:#0b7a63; --accent-ink:#ffffff; --accent-soft:#e1f2ec;
+    --warn:#a5560b; --warn-soft:#fbeedd; --ok:#17713f; --ok-soft:#e0f3e8; --bad:#a32a2a; --bad-soft:#f9e3e3;
+    --chat-bg:#efeae2; --bubble-bot:#ffffff; --bubble-me:#d9fdd3; --bubble-ink:#111b21; --wa-head:#0b6b5a;
+    --radius:14px; --shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1514; --surface:#18201e; --ink:#e7ece9; --muted:#9aa6a1; --line:#2a3532;
+      --accent:#34c29f; --accent-ink:#04201a; --accent-soft:#143229;
+      --warn:#f0a95b; --warn-soft:#352610; --ok:#5fd18d; --ok-soft:#12301f; --bad:#ff8d8d; --bad-soft:#381717;
+      --chat-bg:#0b141a; --bubble-bot:#202c33; --bubble-me:#005c4b; --bubble-ink:#e9edef; --wa-head:#1f2c34;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1514; --surface:#18201e; --ink:#e7ece9; --muted:#9aa6a1; --line:#2a3532;
+    --accent:#34c29f; --accent-ink:#04201a; --accent-soft:#143229;
+    --warn:#f0a95b; --warn-soft:#352610; --ok:#5fd18d; --ok-soft:#12301f; --bad:#ff8d8d; --bad-soft:#381717;
+    --chat-bg:#0b141a; --bubble-bot:#202c33; --bubble-me:#005c4b; --bubble-ink:#e9edef; --wa-head:#1f2c34;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  button,input,select{font:inherit;color:inherit}
+  .wrap{max-width:1120px;margin:0 auto;padding:20px 16px 48px}
+  header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:16px}
+  header.top h1{margin:0;font-size:1.35rem;line-height:1.25}
+  header.top p{margin:2px 0 0;color:var(--muted);font-size:.9rem;max-width:62ch}
+  .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+  .tabs button{border:0;background:transparent;padding:8px 14px;border-radius:9px;cursor:pointer;color:var(--muted);font-weight:600;font-size:.92rem}
+  .tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+  .tabs button:focus-visible,.btn:focus-visible,select:focus-visible,input:focus-visible,.wa-btn:focus-visible,.chip:focus-visible,.row:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  section[hidden]{display:none}
+  .grid-sim{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:24px;align-items:start}
+  .grid-sim > *{min-width:0}
+  @media (max-width:820px){.grid-sim{grid-template-columns:minmax(0,1fr)}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+  .card h2{margin:0 0 8px;font-size:1.02rem}
+  .card h3{margin:16px 0 6px;font-size:.95rem}
+  .muted{color:var(--muted)}
+  .small{font-size:.85rem}
+
+  /* phone */
+  .phone{background:var(--surface);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:var(--shadow);position:relative;display:flex;flex-direction:column;height:640px;max-height:80vh}
+  .wa-head{background:var(--wa-head);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px}
+  .avatar{width:36px;height:36px;border-radius:50%;background:#25d366;color:#04301b;display:grid;place-items:center;font-weight:800}
+  .wa-head b{display:block;font-size:.95rem;line-height:1.2}
+  .wa-head span{font-size:.75rem;opacity:.85}
+  .chat{flex:1;overflow-y:auto;padding:12px;background:var(--chat-bg);display:flex;flex-direction:column;gap:6px}
+  .msg{max-width:84%;padding:7px 10px 5px;border-radius:10px;color:var(--bubble-ink);font-size:.92rem;line-height:1.4;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 1px 1px rgba(0,0,0,.12)}
+  .msg.bot{align-self:flex-start;background:var(--bubble-bot);border-top-left-radius:2px}
+  .msg.me{align-self:flex-end;background:var(--bubble-me);border-top-right-radius:2px}
+  .msg time{display:block;text-align:right;font-size:.68rem;opacity:.6;margin-top:2px}
+  .actions{align-self:flex-start;width:84%;display:flex;flex-direction:column;gap:4px;margin-top:-2px}
+  .wa-btn{background:var(--bubble-bot);color:#0a7aa8;border:0;border-radius:10px;padding:9px 10px;text-align:center;font-weight:600;font-size:.9rem;cursor:pointer;box-shadow:0 1px 1px rgba(0,0,0,.12);min-height:40px}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .wa-btn{color:#53bdeb}}
+  :root[data-theme="dark"] .wa-btn{color:#53bdeb}
+  .wa-btn:disabled{opacity:.45;cursor:default}
+  .wa-form{display:flex;gap:8px;padding:8px;background:var(--surface);border-top:1px solid var(--line)}
+  .wa-form input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:20px;padding:9px 14px}
+  .wa-form button{width:42px;height:42px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer;font-size:1rem}
+  .sheet{position:absolute;inset:auto 0 0 0;max-height:78%;background:var(--surface);border-top-left-radius:18px;border-top-right-radius:18px;box-shadow:0 -8px 24px rgba(0,0,0,.25);display:flex;flex-direction:column;transform:translateY(105%);transition:transform .2s ease;z-index:5}
+  .sheet.open{transform:translateY(0)}
+  @media (prefers-reduced-motion:reduce){.sheet{transition:none}}
+  .sheet header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);font-weight:700}
+  .sheet header button{border:0;background:transparent;font-size:1.2rem;cursor:pointer;color:var(--muted);min-width:36px;min-height:36px}
+  .sheet .rows{overflow-y:auto;padding:4px 6px 10px}
+  .row{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 12px;border-radius:10px;cursor:pointer}
+  .row:hover{background:var(--accent-soft)}
+  .row b{display:block;font-size:.93rem}
+  .row span{display:block;font-size:.8rem;color:var(--muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:.85rem}
+  .chip:hover{background:var(--accent-soft)}
+
+  /* side + panel */
+  .field{display:flex;flex-direction:column;gap:4px;margin:8px 0}
+  .field label{font-size:.82rem;color:var(--muted);font-weight:600}
+  select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:40px}
+  .timer{display:flex;align-items:baseline;gap:8px;margin-top:8px}
+  .timer b{font-size:1.6rem;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.78rem;font-weight:700}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.na{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+  ul.plain{margin:6px 0 0;padding-left:18px} ul.plain li{margin:3px 0}
+  .btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 14px;cursor:pointer;font-weight:600;min-height:40px}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn.danger{color:var(--bad)}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+  .toolbar .spacer{flex:1}
+  .banner{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:.9rem;font-weight:600}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
+  .kpi .label{font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  .kpi .value{font-size:1.7rem;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums}
+  .kpi .meta{font-size:.8rem;color:var(--muted);margin-top:2px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:820px){.two{grid-template-columns:1fr}}
+  .bar{display:grid;grid-template-columns:minmax(120px,190px) 1fr 70px;gap:8px;align-items:center;margin:6px 0;font-size:.86rem}
+  .bar .track{background:var(--bg);border-radius:6px;height:14px;overflow:hidden;border:1px solid var(--line)}
+  .bar .fill{height:100%;background:var(--accent)}
+  .bar .num{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+  @media (max-width:520px){.bar{grid-template-columns:1fr 60px}.bar .track{grid-column:1/-1;order:3}}
+  .tablewrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:.84rem}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+  th{color:var(--muted);font-weight:700;font-size:.76rem;text-transform:uppercase;letter-spacing:.03em}
+  td.wrap{white-space:normal}
+  .empty{padding:18px;text-align:center;color:var(--muted)}
+  pre.code{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;overflow-x:auto;font-size:.8rem;margin:8px 0}
+  footer{margin-top:28px;color:var(--muted);font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Registro de venta perdida</h1>
+      <p>Simulador de la mini app de WhatsApp para asesores: en menos de 45 segundos queda guardado el canal, la categoría, el producto y el motivo por el que el cliente no compró.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Secciones">
+      <button role="tab" id="tab-btn-sim" aria-selected="true" aria-controls="tab-sim">Simulador</button>
+      <button role="tab" id="tab-btn-panel" aria-selected="false" aria-controls="tab-panel">Panel comercial</button>
+      <button role="tab" id="tab-btn-guia" aria-selected="false" aria-controls="tab-guia">Guía</button>
+    </div>
+  </header>
+
+  <!-- ============ SIMULADOR ============ -->
+  <section id="tab-sim" role="tabpanel" aria-labelledby="tab-btn-sim">
+    <div class="grid-sim">
+      <div>
+        <div class="phone" aria-label="Simulador de WhatsApp">
+          <div class="wa-head"><div class="avatar" aria-hidden="true">R</div><div><b>Registro venta perdida</b><span>bot · en línea</span></div></div>
+          <div class="chat" id="chat" role="log" aria-live="polite" aria-label="Conversación"></div>
+          <form class="wa-form" id="wa-form" autocomplete="off">
+            <input id="wa-input" aria-label="Escribe un mensaje" placeholder="Escribe un mensaje" maxlength="200">
+            <button type="submit" aria-label="Enviar">➤</button>
+          </form>
+          <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Opciones">
+            <header><span id="sheet-title">Opciones</span><button type="button" id="sheet-close" aria-label="Cerrar">✕</button></header>
+            <div class="rows" id="sheet-rows"></div>
+          </div>
+        </div>
+        <div class="chips" aria-label="Comandos rápidos">
+          <button class="chip" data-cmd="nuevo">nuevo</button>
+          <button class="chip" data-cmd="hoy">hoy</button>
+          <button class="chip" data-cmd="ayuda">ayuda</button>
+          <button class="chip" data-cmd="cancelar">cancelar</button>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h2>Quién escribe</h2>
+          <div class="field">
+            <label for="asesor">Número de WhatsApp del asesor (simulado)</label>
+            <select id="asesor"></select>
+          </div>
+          <p class="muted small" style="margin:6px 0 0">Elige el número no autorizado para probar el bloqueo de acceso. La lista real de asesores se edita en <code>CONFIG.asesores</code>.</p>
+          <div class="timer"><span class="muted small">Registro en curso</span><b id="timer">00:00</b><span id="timer-pill" class="pill na">sin registro</span></div>
+          <h3>Registros guardados en este navegador</h3>
+          <div id="recent" class="small"></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h2>Cómo probarlo</h2>
+          <ul class="plain small">
+            <li>Escribe <b>hola</b> o toca <b>nuevo</b> para empezar.</li>
+            <li>Responde con los botones y listas; solo escribes la descripción del producto.</li>
+            <li>En el paso 5 prueba <b>1800 1200 35210</b> (monto, cupo, código) o toca <b>Saltar</b>.</li>
+            <li>Antes de guardar puedes tocar <b>Corregir</b> y cambiar un campo sin repetir todo.</li>
+            <li>Deja un registro a medias más de 30 minutos y se descarta al volver.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PANEL ============ -->
+  <section id="tab-panel" role="tabpanel" aria-labelledby="tab-btn-panel" hidden>
+    <div id="demo-banner" class="banner" hidden></div>
+    <div class="toolbar">
+      <div class="field" style="margin:0"><label for="f-cat">Categoría</label><select id="f-cat"></select></div>
+      <div class="field" style="margin:0"><label for="f-canal">Canal</label><select id="f-canal"></select></div>
+      <span class="spacer"></span>
+      <button class="btn" id="btn-demo">Cargar datos de ejemplo</button>
+      <button class="btn primary" id="btn-csv">Exportar CSV</button>
+      <button class="btn danger" id="btn-clear">Borrar todo</button>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="two">
+      <div class="card"><h2>Motivos de rechazo</h2><div id="bars"></div></div>
+      <div class="card"><h2>Motivo principal por categoría</h2><div class="tablewrap" id="t-cat"></div>
+        <h3>Motivo principal por canal</h3><div class="tablewrap" id="t-canal"></div></div>
+    </div>
+    <div class="card" style="margin-top:16px"><h2>Últimos registros</h2><div class="tablewrap" id="t-last"></div></div>
+  </section>
+
+  <!-- ============ GUÍA ============ -->
+  <section id="tab-guia" role="tabpanel" aria-labelledby="tab-btn-guia" hidden>
+    <div class="two">
+      <div class="card">
+        <h2>Qué es esto</h2>
+        <p class="small">Este archivo es un <b>simulador</b>: reproduce en el navegador la conversación que tendría el bot en WhatsApp y guarda los registros en el almacenamiento del navegador. No envía mensajes reales. Sirve para validar el flujo, los textos y las métricas con tu equipo antes de conectarlo.</p>
+        <h3>Pasar a WhatsApp real (versión 1)</h3>
+        <ol class="small" style="padding-left:18px;margin:6px 0">
+          <li>Crear una cuenta de WhatsApp Business (Cloud API de Meta) con un número exclusivo para el bot.</li>
+          <li>En Make, crear un escenario con un webhook que reciba los mensajes de Meta.</li>
+          <li>Guardar el estado de cada conversación (paso y borrador) en una hoja de cálculo, una fila por teléfono.</li>
+          <li>Replicar en Make la misma lógica de pasos y los mismos textos que define <code>CONFIG</code> y <code>ask()</code> en este archivo.</li>
+          <li>Al confirmar, agregar la fila a la hoja <b>registros</b> con las columnas de abajo.</li>
+        </ol>
+        <p class="small muted">Antes de construir, revisa en la documentación vigente de Meta los límites de mensajes interactivos (botones, listas, longitud de títulos). El simulador usa 3 botones, 10 filas por lista, 20 caracteres por botón y 24 por fila, y avisa en la consola si algún texto los excede. El resumen semanal automático (versión 2) requerirá una plantilla de mensaje aprobada por Meta.</p>
+      </div>
+      <div class="card">
+        <h2>Columnas de la hoja de registros</h2>
+        <pre class="code" id="cols"></pre>
+        <h3>Privacidad</h3>
+        <ul class="plain small">
+          <li>No se guarda nombre, DNI, teléfono ni dirección del cliente.</li>
+          <li>El código de cliente es opcional y debe ser el interno que permite cruzar con el archivo de ventas. El bot rechaza números que parezcan DNI o teléfono.</li>
+          <li>Revisa con el área legal el tratamiento de datos antes de usarlo con clientes reales.</li>
+        </ul>
+        <h3>Metas del piloto (punto de partida)</h3>
+        <ul class="plain small">
+          <li>Registro completo en 45 segundos o menos.</li>
+          <li>90% o más de los registros iniciados se completan.</li>
+          <li>Menos de 10% de los motivos caen en "Otro motivo".</li>
+        </ul>
+        <h3>Editar listas</h3>
+        <p class="small">Categorías, motivos, canales y asesores están al inicio del script, dentro de <code>CONFIG</code>. Cambiarlos no requiere tocar la lógica.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>Mini app de registro de venta perdida · proyecto integrador · datos guardados solo en este navegador.</footer>
+</div>
+
+<script>
+/* ENGINE:START */
+const Engine = (function(){
+  /* ---------- CONFIGURACIÓN EDITABLE (no requiere tocar la lógica) ---------- */
+  const CONFIG = {
+    sesionMinutos: 30,
+    telNoAutorizado: "+51999999999",
+    asesores: [
+      {tel:"+51900000001", nombre:"Asesor 1"},
+      {tel:"+51900000002", nombre:"Asesor 2"},
+      {tel:"+51900000003", nombre:"Asesor 3"},
+      {tel:"+51900000004", nombre:"Asesor 4"}
+    ],
+    canales: [
+      {id:"callcenter", title:"Callcenter"},
+      {id:"web", title:"Web"},
+      {id:"directa", title:"Venta directa"}
+    ],
+    categorias: [
+      {id:"celulares", title:"Celulares"},
+      {id:"televisores", title:"Televisores"},
+      {id:"refrigeradoras", title:"Refrigeradoras"},
+      {id:"cocinas", title:"Cocinas"},
+      {id:"lavadoras", title:"Lavadoras"},
+      {id:"laptops", title:"Laptops"},
+      {id:"terma", title:"Terma de paso"},
+      {id:"motos", title:"Motos"},
+      {id:"hogar", title:"Otros del hogar"},
+      {id:"otra", title:"Otra categoría"}
+    ],
+    motivos: [
+      {codigo:1,  title:"Precio muy alto",          desc:"El precio del producto le pareció alto"},
+      {codigo:2,  title:"Cupo no alcanza",          desc:"La línea de crédito no cubre el monto"},
+      {codigo:3,  title:"Crédito no aprobado",      desc:"CrediCalidda no aprobó el crédito"},
+      {codigo:4,  title:"Cuota muy alta",           desc:"La cuota mensual le resultó alta"},
+      {codigo:5,  title:"Prefiere otra marca",      desc:"Quería una marca o modelo que no tenemos"},
+      {codigo:6,  title:"Mejor oferta otro aliado", desc:"Encontró una mejor oferta en otro aliado"},
+      {codigo:7,  title:"Sin stock o demora",       desc:"No hay stock o la entrega demora"},
+      {codigo:8,  title:"Solo cotizaba",            desc:"Todavía no decide comprar"},
+      {codigo:9,  title:"Desconfía condiciones",    desc:"No entendió o desconfía de las condiciones"},
+      {codigo:10, title:"Otro motivo",              desc:"Ninguno de los anteriores (lo escribes tú)"}
+    ],
+    alternativas: [
+      {id:"acepto",   title:"Sí, la aceptó"},
+      {id:"rechazo",  title:"Sí, la rechazó"},
+      {id:"no_habia", title:"No había"}
+    ],
+    /* motivos tras los cuales se pregunta si se ofreció una alternativa más económica */
+    motivosConAlternativa: [1,2,3,4]
+  };
+  const OTRO = 10;
+  const HELP = "Responde con los botones y listas; solo escribes la descripción.\nComandos: nuevo · hoy · cancelar · ayuda\nSi te equivocas, toca Corregir antes de guardar.";
+
+  /* ---------- utilidades ---------- */
+  const norm = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
+  const T = body => ({type:"text", body});
+  const B = (body, buttons) => ({type:"buttons", body, buttons});
+  const L = (body, label, rows) => ({type:"list", body, label, rows});
+  const aplicaAlt = codigo => CONFIG.motivosConAlternativa.includes(codigo);
+  const sameDay = (a,b) => new Date(a).toDateString() === new Date(b).toDateString();
+
+  const FIXED = {
+    resumen: [{id:"guardar",title:"Guardar"},{id:"corregir",title:"Corregir"},{id:"cancelar",title:"Cancelar"}]
+  };
+
+  function correctionOptions(s){
+    const o = [
+      {id:"canal", title:"Canal"},
+      {id:"categoria", title:"Categoría"},
+      {id:"descripcion", title:"Producto"},
+      {id:"motivo", title:"Motivo"},
+      {id:"opcionales", title:"Monto, cupo o código"}
+    ];
+    if(aplicaAlt(s.draft.motivo_codigo)) o.push({id:"alternativa", title:"Alternativa ofrecida"});
+    return o;
+  }
+
+  /* Elige una opción según el id de un botón/lista o según lo que escribió el asesor */
+  function pickFrom(input, prefix, options, idKey, titleKey){
+    if(input.kind === "reply"){
+      if(!input.id.startsWith(prefix)) return null;
+      const v = input.id.slice(prefix.length);
+      return options.find(o => String(o[idKey]) === v) || null;
+    }
+    const t = norm(input.text);
+    if(/^\d+$/.test(t)){
+      const n = parseInt(t,10);
+      if(n >= 1 && n <= options.length) return options[n-1];
+    }
+    return options.find(o => norm(o[titleKey]) === t) || null;
+  }
+
+  function nextStep(s, from){
+    const d = s.draft;
+    const order = ["canal","categoria","descripcion","motivo","motivo_otro","opcionales","alternativa","resumen"];
+    for(let i = order.indexOf(from) + 1; i < order.length; i++){
+      const st = order[i];
+      if(st === "motivo_otro" && d.motivo_codigo !== OTRO) continue;
+      if(st === "alternativa" && !aplicaAlt(d.motivo_codigo)) continue;
+      if(s.back){
+        /* al corregir solo se pregunta lo que el cambio vuelve obligatorio */
+        if(st === "motivo_otro" && !d.motivo_otro) return st;
+        if(st === "alternativa" && !d.alternativa) return st;
+        if(st === "resumen") return st;
+        continue;
+      }
+      return st;
+    }
+    return "resumen";
+  }
+
+  function summary(s){
+    const d = s.draft;
+    const money = v => (v || v === 0) ? "S/ " + v : "—";
+    const lines = [
+      "Revisa el registro:",
+      "• Canal: " + d.canal,
+      "• Categoría: " + d.categoria,
+      "• Producto: " + d.descripcion,
+      "• Motivo: " + d.motivo_texto + (d.motivo_otro ? " (" + d.motivo_otro + ")" : ""),
+      "• Monto: " + money(d.monto) + " · Cupo: " + money(d.cupo),
+      "• Código cliente: " + (d.id_cliente || "—")
+    ];
+    if(d.alternativa){
+      const a = CONFIG.alternativas.find(x => x.id === d.alternativa);
+      lines.push("• Alternativa: " + (a ? a.title : d.alternativa));
+    }
+    lines.push("¿Lo guardo?");
+    return lines.join("\n");
+  }
+
+  function ask(step, s, asesor, welcome){
+    switch(step){
+      case "canal": {
+        const body = welcome
+          ? "Hola " + asesor.nombre + ". 👋 Registremos una venta perdida. Toma 40 segundos.\nPaso 1 de 5 · ¿Por qué canal fue?"
+          : "Paso 1 de 5 · ¿Por qué canal fue?";
+        return B(body, CONFIG.canales.map(c => ({id:"canal:" + c.id, title:c.title})));
+      }
+      case "categoria":
+        return L("Paso 2 de 5 · ¿De qué categoría era el producto?", "Ver categorías",
+          CONFIG.categorias.map(c => ({id:"cat:" + c.id, title:c.title})));
+      case "descripcion":
+        return T("Paso 3 de 5 · Descríbelo en pocas palabras.\nEj.: lavadora LG 13 kg.");
+      case "motivo":
+        return L("Paso 4 de 5 · ¿Cuál fue el motivo principal por el que no compró?", "Ver motivos",
+          CONFIG.motivos.map(m => ({id:"mot:" + m.codigo, title:m.title, description:m.desc})));
+      case "motivo_otro":
+        return T("Cuéntame el motivo en una línea.");
+      case "opcionales":
+        return B("Paso 5 de 5 · Si lo tienes a la mano: monto cupo código.\nEj.: 1800 1200 35210 (usa - para saltar uno). O toca Saltar.",
+          [{id:"skip:opc", title:"Saltar"}]);
+      case "alternativa":
+        return B("¿Se ofreció una alternativa más económica?",
+          CONFIG.alternativas.map(a => ({id:"alt:" + a.id, title:a.title})));
+      case "resumen":
+        return B(summary(s), FIXED.resumen.map(o => ({id:"res:" + o.id, title:o.title})));
+      case "corregir_campo":
+        return L("¿Qué quieres corregir?", "Ver campos",
+          correctionOptions(s).map(o => ({id:"cor:" + o.id, title:o.title})));
+    }
+    return T("Escribe 'ayuda' para ver las instrucciones.");
+  }
+
+  function textoLibreValido(t){
+    return t.length >= 3 && t.length <= 80 && !/\d{8,}/.test(t);
+  }
+
+  function parseOpcionales(txt){
+    const tk = txt.trim().split(/[\s,;\/]+/).filter(Boolean);
+    if(tk.length === 0) return {err:"Escribe monto cupo código, o toca Saltar."};
+    if(tk.length > 3) return {err:"Son máximo 3 datos: monto, cupo y código."};
+    const num = v => /^\d+(\.\d{1,2})?$/.test(v) && +v > 0 && +v <= 200000;
+    const res = {monto:null, cupo:null, id_cliente:null};
+    if(tk[0] && tk[0] !== "-"){ if(!num(tk[0])) return {err:"El monto debe ser un número en soles, por ejemplo 1800."}; res.monto = +tk[0]; }
+    if(tk[1] && tk[1] !== "-"){ if(!num(tk[1])) return {err:"El cupo debe ser un número en soles, por ejemplo 1200."}; res.cupo = +tk[1]; }
+    if(tk[2] && tk[2] !== "-"){
+      if(/^\d{8,9}$/.test(tk[2])) return {err:"Eso parece un DNI o teléfono. Usa solo el código interno del cliente."};
+      if(!/^[A-Za-z0-9]{1,12}$/.test(tk[2])) return {err:"El código debe tener hasta 12 letras o números."};
+      res.id_cliente = tk[2];
+    }
+    return res;
+  }
+
+  /* ---------- motor: una función pura por mensaje recibido ---------- */
+  function handle(session, input, ctx){
+    const now = ctx.now, out = [], ev = {started:false, discarded:false, saved:null};
+    const asesor = CONFIG.asesores.find(a => a.tel === ctx.tel);
+    if(!asesor){
+      out.push(T("Este número no está autorizado. Pide acceso a tu jefe comercial."));
+      return {session:null, out, ev};
+    }
+    let s = session ? JSON.parse(JSON.stringify(session)) : null;
+
+    if(s && now - s.lastAt > CONFIG.sesionMinutos * 60000){
+      ev.discarded = true; s = null;
+      out.push(T("Tu registro anterior quedó a medias por más de " + CONFIG.sesionMinutos + " minutos y se descartó."));
+    }
+
+    const isText = input.kind === "text";
+    const low = isText ? norm(input.text) : "";
+    const isNuevo = (isText && (low === "nuevo" || low === "hola")) || (!isText && input.id === "nuevo");
+
+    if(isText && low === "ayuda"){
+      out.push(T(HELP));
+      if(s){ s.lastAt = now; out.push(ask(s.step, s, asesor)); }
+      return {session:s, out, ev};
+    }
+    if(isText && low === "hoy"){
+      const n = (ctx.records || []).filter(r => r.asesor_id === ctx.tel && !r.demo && sameDay(r.fecha_hora, now)).length;
+      out.push(T("Hoy llevas " + n + (n === 1 ? " registro." : " registros.")));
+      if(s){ s.lastAt = now; out.push(ask(s.step, s, asesor)); }
+      return {session:s, out, ev};
+    }
+    if(isText && low === "cancelar"){
+      if(s){ s = null; out.push(T("Registro cancelado. Escribe 'nuevo' cuando quieras.")); }
+      else out.push(T("No hay un registro en curso."));
+      return {session:s, out, ev};
+    }
+    if(isNuevo || !s){
+      if(s) ev.discarded = true;
+      s = {step:"canal", draft:{}, back:false, startedAt:now, lastAt:now};
+      ev.started = true;
+      out.push(ask("canal", s, asesor, true));
+      return {session:s, out, ev};
+    }
+
+    s.lastAt = now;
+    const d = s.draft;
+    const bad = msg => {
+      out.push(T(msg || "No te entendí. Elige una opción de la lista o escribe 'ayuda'."));
+      out.push(ask(s.step, s, asesor));
+      return {session:s, out, ev};
+    };
+    const advance = from => {
+      s.step = nextStep(s, from);
+      if(s.step === "resumen") s.back = false;
+      out.push(ask(s.step, s, asesor));
+      return {session:s, out, ev};
+    };
+
+    switch(s.step){
+      case "canal": {
+        const o = pickFrom(input, "canal:", CONFIG.canales, "id", "title");
+        if(!o) return bad();
+        d.canal = o.title; return advance("canal");
+      }
+      case "categoria": {
+        const o = pickFrom(input, "cat:", CONFIG.categorias, "id", "title");
+        if(!o) return bad();
+        d.categoria = o.title; return advance("categoria");
+      }
+      case "descripcion": {
+        if(!isText) return bad();
+        const t = input.text.trim();
+        if(!textoLibreValido(t)) return bad("Escríbelo en 3 a 80 caracteres y sin números largos (DNI o teléfono).");
+        d.descripcion = t; return advance("descripcion");
+      }
+      case "motivo": {
+        const o = pickFrom(input, "mot:", CONFIG.motivos, "codigo", "title");
+        if(!o) return bad();
+        d.motivo_codigo = o.codigo; d.motivo_texto = o.title;
+        if(o.codigo !== OTRO) d.motivo_otro = "";
+        if(!aplicaAlt(o.codigo)) d.alternativa = "";
+        return advance("motivo");
+      }
+      case "motivo_otro": {
+        if(!isText) return bad();
+        const t = input.text.trim();
+        if(!textoLibreValido(t)) return bad("Escríbelo en 3 a 80 caracteres y sin números largos.");
+        d.motivo_otro = t; return advance("motivo_otro");
+      }
+      case "opcionales": {
+        if(!isText){
+          if(input.id === "skip:opc") return advance("opcionales");
+          return bad();
+        }
+        if(low === "saltar") return advance("opcionales");
+        const r = parseOpcionales(input.text);
+        if(r.err) return bad(r.err);
+        d.monto = r.monto; d.cupo = r.cupo; d.id_cliente = r.id_cliente;
+        return advance("opcionales");
+      }
+      case "alternativa": {
+        const o = pickFrom(input, "alt:", CONFIG.alternativas, "id", "title");
+        if(!o) return bad();
+        d.alternativa = o.id; return advance("alternativa");
+      }
+      case "resumen": {
+        const o = pickFrom(input, "res:", FIXED.resumen, "id", "title");
+        if(!o) return bad();
+        if(o.id === "cancelar"){
+          s = null; out.push(T("Registro cancelado. Escribe 'nuevo' cuando quieras."));
+          return {session:s, out, ev};
+        }
+        if(o.id === "corregir"){
+          s.step = "corregir_campo";
+          out.push(ask("corregir_campo", s, asesor));
+          return {session:s, out, ev};
+        }
+        ev.saved = {
+          id_registro: ctx.id,
+          fecha_hora: new Date(now).toISOString(),
+          asesor_id: ctx.tel,
+          canal: d.canal,
+          categoria: d.categoria,
+          descripcion_producto: d.descripcion,
+          motivo_codigo: d.motivo_codigo,
+          motivo_texto: d.motivo_texto,
+          motivo_otro_texto: d.motivo_otro || "",
+          monto_producto_soles: (d.monto === null || d.monto === undefined) ? "" : d.monto,
+          cupo_aprox_soles: (d.cupo === null || d.cupo === undefined) ? "" : d.cupo,
+          alternativa_ofrecida: d.alternativa || "",
+          id_cliente: d.id_cliente || "",
+          duracion_seg: Math.round((now - s.startedAt) / 1000)
+        };
+        s = null;
+        out.push(B("Listo, registro guardado. ✅ Escribe 'nuevo' para otro.", [{id:"nuevo", title:"Nuevo registro"}]));
+        return {session:s, out, ev};
+      }
+      case "corregir_campo": {
+        const o = pickFrom(input, "cor:", correctionOptions(s), "id", "title");
+        if(!o) return bad();
+        s.back = true; s.step = o.id;
+        out.push(ask(o.id, s, asesor));
+        return {session:s, out, ev};
+      }
+    }
+    return bad();
+  }
+
+  /* Revisa los límites de los mensajes interactivos de WhatsApp (verificar valores vigentes con Meta) */
+  function validateLimits(m){
+    const p = [];
+    if(m.body.length > 1024) p.push("cuerpo > 1024");
+    if(m.type === "buttons"){
+      if(m.buttons.length > 3) p.push("más de 3 botones");
+      m.buttons.forEach(b => { if(b.title.length > 20) p.push("botón > 20: " + b.title); });
+    }
+    if(m.type === "list"){
+      if(m.rows.length > 10) p.push("más de 10 filas");
+      if(m.label.length > 20) p.push("etiqueta > 20");
+      m.rows.forEach(r => {
+        if(r.title.length > 24) p.push("fila > 24: " + r.title);
+        if((r.description || "").length > 72) p.push("descripción > 72: " + r.title);
+      });
+    }
+    return p;
+  }
+
+  return {CONFIG, HELP, handle, ask, validateLimits};
+})();
+/* ENGINE:END */
+
+/* ====================== INTERFAZ (simulador + panel) ====================== */
+(function(){
+  "use strict";
+  const CONFIG = Engine.CONFIG;
+  const COLS = ["id_registro","fecha_hora","asesor_id","canal","categoria","descripcion_producto","motivo_codigo","motivo_texto","motivo_otro_texto","monto_producto_soles","cupo_aprox_soles","alternativa_ofrecida","id_cliente","duracion_seg"];
+  const META = {segundos:45, completados:0.9, otro:0.1};
+  const KEY = "venta_perdida_v1";
+  const $ = s => document.querySelector(s);
+
+  /* ---------- almacenamiento (con respaldo en memoria) ---------- */
+  let store = {records:[], stats:{started:0, seq:0}};
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){
+      const o = JSON.parse(raw);
+      if(o && Array.isArray(o.records) && o.stats) store = o;
+    }
+  }catch(e){}
+  function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(store)); }catch(e){} }
+
+  /* ---------- helpers de DOM ---------- */
+  function el(tag, props, kids){
+    const n = document.createElement(tag);
+    if(props) for(const k in props){
+      if(k === "class") n.className = props[k];
+      else if(k === "text") n.textContent = props[k];
+      else if(k.startsWith("on")) n.addEventListener(k.slice(2), props[k]);
+      else n.setAttribute(k, props[k]);
+    }
+    (kids || []).forEach(c => n.append(c));
+    return n;
+  }
+  const hhmm = ts => new Date(ts).toLocaleTimeString("es-PE", {hour:"2-digit", minute:"2-digit"});
+  const pct = x => (x * 100).toFixed(0) + "%";
+
+  /* ---------- simulador ---------- */
+  const sessions = {};
+  const logs = {};
+  let tel = CONFIG.asesores[0].tel;
+
+  const sel = $("#asesor");
+  CONFIG.asesores.forEach(a => sel.append(el("option", {value:a.tel, text:a.nombre + " · " + a.tel})));
+  sel.append(el("option", {value:CONFIG.telNoAutorizado, text:"Número no autorizado · " + CONFIG.telNoAutorizado}));
+  sel.addEventListener("change", () => { tel = sel.value; closeSheet(); renderChat(); renderTimer(); });
+
+  function log(from, payload){
+    (logs[tel] = logs[tel] || []).push(Object.assign({from, ts:Date.now(), used:false}, payload));
+  }
+
+  function send(input){
+    const mine = logs[tel] = logs[tel] || [];
+    mine.forEach(m => { if(m.from === "bot") m.used = true; });
+    log("me", {text: input.kind === "text" ? input.text : input.title});
+    const id = "RVP-" + String(store.stats.seq + 1).padStart(5, "0");
+    const res = Engine.handle(sessions[tel] || null, input, {tel, now:Date.now(), records:store.records, id});
+    sessions[tel] = res.session;
+    if(res.ev.started) store.stats.started++;
+    if(res.ev.saved){ store.records.push(res.ev.saved); store.stats.seq++; }
+    persist();
+    res.out.forEach(m => {
+      const problems = Engine.validateLimits(m);
+      if(problems.length) console.warn("Límite de WhatsApp excedido:", problems, m);
+      log("bot", {msg:m});
+    });
+    renderChat(); renderTimer(); renderRecent(); renderPanel();
+  }
+
+  function renderChat(){
+    const chat = $("#chat");
+    chat.replaceChildren();
+    const items = logs[tel] || [];
+    if(!items.length){
+      chat.append(el("div", {class:"msg bot", text:"Escribe «hola» o toca «nuevo» para registrar una venta perdida."}));
+    }
+    items.forEach(m => {
+      if(m.from === "me"){
+        chat.append(el("div", {class:"msg me"}, [document.createTextNode(m.text), el("time", {text:hhmm(m.ts)})]));
+        return;
+      }
+      chat.append(el("div", {class:"msg bot"}, [document.createTextNode(m.msg.body), el("time", {text:hhmm(m.ts)})]));
+      if(m.msg.type === "buttons"){
+        const box = el("div", {class:"actions"});
+        m.msg.buttons.forEach(b => {
+          const btn = el("button", {class:"wa-btn", type:"button", text:b.title, onclick:() => send({kind:"reply", id:b.id, title:b.title})});
+          if(m.used) btn.disabled = true;
+          box.append(btn);
+        });
+        chat.append(box);
+      }
+      if(m.msg.type === "list"){
+        const box = el("div", {class:"actions"});
+        const btn = el("button", {class:"wa-btn", type:"button", text:"☰ " + m.msg.label, onclick:() => openSheet(m.msg)});
+        if(m.used) btn.disabled = true;
+        box.append(btn); chat.append(box);
+      }
+    });
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function openSheet(msg){
+    $("#sheet-title").textContent = msg.label;
+    const rows = $("#sheet-rows"); rows.replaceChildren();
+    msg.rows.forEach(r => {
+      const kids = [el("b", {text:r.title})];
+      if(r.description) kids.push(el("span", {text:r.description}));
+      rows.append(el("button", {class:"row", type:"button", onclick:() => { closeSheet(); send({kind:"reply", id:r.id, title:r.title}); }}, kids));
+    });
+    $("#sheet").classList.add("open");
+    const first = rows.querySelector(".row"); if(first) first.focus();
+  }
+  function closeSheet(){ $("#sheet").classList.remove("open"); }
+  $("#sheet-close").addEventListener("click", closeSheet);
+  document.addEventListener("keydown", e => { if(e.key === "Escape") closeSheet(); });
+
+  $("#wa-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const inp = $("#wa-input"), t = inp.value.trim();
+    if(!t) return;
+    inp.value = "";
+    send({kind:"text", text:t});
+  });
+  document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => send({kind:"text", text:c.dataset.cmd})));
+
+  function renderTimer(){
+    const s = sessions[tel];
+    const t = $("#timer"), p = $("#timer-pill");
+    if(!s || !s.step){ t.textContent = "00:00"; p.textContent = "sin registro"; p.className = "pill na"; return; }
+    const sec = Math.floor((Date.now() - s.startedAt) / 1000);
+    t.textContent = String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
+    const ok = sec <= META.segundos;
+    p.textContent = ok ? "dentro de la meta (45 s)" : "sobre la meta (45 s)";
+    p.className = "pill " + (ok ? "ok" : "warn");
+  }
+  setInterval(renderTimer, 1000);
+
+  function renderRecent(){
+    const box = $("#recent"); box.replaceChildren();
+    const real = store.records.filter(r => !r.demo).slice(-5).reverse();
+    if(!real.length){ box.append(el("p", {class:"muted", text:"Aún no hay registros reales. Completa un flujo para verlo aquí."})); return; }
+    const ul = el("ul", {class:"plain"});
+    real.forEach(r => ul.append(el("li", {text:r.id_registro + " · " + r.categoria + " · " + r.motivo_texto + " (" + r.canal + ")"})));
+    box.append(ul);
+  }
+
+  /* ---------- panel ---------- */
+  const fCat = $("#f-cat"), fCanal = $("#f-canal");
+  [["", "Todas"]].concat(CONFIG.categorias.map(c => [c.title, c.title])).forEach(([v,t]) => fCat.append(el("option", {value:v, text:t})));
+  [["", "Todos"]].concat(CONFIG.canales.map(c => [c.title, c.title])).forEach(([v,t]) => fCanal.append(el("option", {value:v, text:t})));
+  fCat.addEventListener("change", renderPanel); fCanal.addEventListener("change", renderPanel);
+
+  function filtered(){
+    return store.records.filter(r => (!fCat.value || r.categoria === fCat.value) && (!fCanal.value || r.canal === fCanal.value));
+  }
+  function statusPill(ok, na){ return el("span", {class:"pill " + (na ? "na" : ok ? "ok" : "bad"), text: na ? "sin datos" : ok ? "cumple la meta" : "no cumple la meta"}); }
+  function kpi(label, value, meta, pill){
+    const k = el("div", {class:"kpi"}, [el("div", {class:"label", text:label}), el("div", {class:"value", text:value}), el("div", {class:"meta", text:meta})]);
+    if(pill) k.append(pill);
+    return k;
+  }
+
+  function groupTable(rows, key, titleCol){
+    const g = {};
+    rows.forEach(r => (g[r[key]] = g[r[key]] || []).push(r));
+    const data = Object.entries(g).map(([k, arr]) => {
+      const c = {}; arr.forEach(r => c[r.motivo_texto] = (c[r.motivo_texto] || 0) + 1);
+      const top = Object.entries(c).sort((a,b) => b[1] - a[1])[0];
+      return {k, n:arr.length, top:top[0], share:top[1] / arr.length, cupo:arr.filter(r => r.motivo_codigo === 2).length / arr.length};
+    }).sort((a,b) => b.n - a.n);
+    if(!data.length) return el("div", {class:"empty", text:"Sin datos todavía."});
+    const tb = el("tbody");
+    data.forEach(d => tb.append(el("tr", {}, [el("td", {text:d.k}), el("td", {text:String(d.n)}), el("td", {text:d.top}), el("td", {text:pct(d.share)}), el("td", {text:pct(d.cupo)})])));
+    return el("table", {}, [el("thead", {}, [el("tr", {}, [titleCol, "Registros", "Motivo principal", "% del grupo", "% cupo no alcanza"].map(h => el("th", {text:h})))]), tb]);
+  }
+
+  function renderPanel(){
+    const rows = filtered();
+    const demoN = store.records.filter(r => r.demo).length;
+    const banner = $("#demo-banner");
+    banner.hidden = !demoN;
+    banner.textContent = demoN ? "Se están mostrando " + demoN + " registros de EJEMPLO (asesor DEMO, distribución aleatoria). No son datos reales y no se incluyen en el CSV." : "";
+
+    const real = store.records.filter(r => !r.demo).length;
+    const k = $("#kpis"); k.replaceChildren();
+    const n = rows.length;
+    k.append(kpi("Registros", String(n), (fCat.value || fCanal.value) ? "con los filtros activos" : "en total"));
+
+    const comp = store.stats.started ? real / store.stats.started : null;
+    k.append(kpi("Completados", comp === null ? "—" : pct(Math.min(comp, 1)), "registros guardados sobre iniciados (reales)", statusPill(comp !== null && comp >= META.completados, comp === null)));
+
+    const avg = n ? rows.reduce((a,r) => a + (+r.duracion_seg || 0), 0) / n : null;
+    k.append(kpi("Tiempo promedio", avg === null ? "—" : Math.round(avg) + " s", "meta: 45 s o menos", statusPill(avg !== null && avg <= META.segundos, avg === null)));
+
+    const otro = n ? rows.filter(r => r.motivo_codigo === 10).length / n : null;
+    k.append(kpi("Motivo «Otro»", otro === null ? "—" : pct(otro), "meta: menos de 10%", statusPill(otro !== null && otro < META.otro, otro === null)));
+
+    const cupo = n ? rows.filter(r => r.motivo_codigo === 2).length / n : null;
+    const prec = n ? rows.filter(r => r.motivo_codigo === 1).length / n : null;
+    k.append(kpi("Cupo vs precio", cupo === null ? "—" : pct(cupo) + " · " + pct(prec), "cupo no alcanza · precio muy alto"));
+
+    const bars = $("#bars"); bars.replaceChildren();
+    if(!n) bars.append(el("div", {class:"empty", text:"Aún no hay registros. Completa un flujo en el simulador o carga datos de ejemplo."}));
+    else{
+      const c = {}; rows.forEach(r => c[r.motivo_texto] = (c[r.motivo_texto] || 0) + 1);
+      const max = Math.max.apply(null, Object.values(c));
+      Object.entries(c).sort((a,b) => b[1] - a[1]).forEach(([m, v]) => {
+        const fill = el("div", {class:"fill"}); fill.style.width = (v / max * 100) + "%";
+        bars.append(el("div", {class:"bar"}, [el("span", {text:m}), el("div", {class:"track"}, [fill]), el("span", {class:"num", text:v + " · " + pct(v / n)})]));
+      });
+    }
+    const tc = $("#t-cat"); tc.replaceChildren(groupTable(rows, "categoria", "Categoría"));
+    const tn = $("#t-canal"); tn.replaceChildren(groupTable(rows, "canal", "Canal"));
+
+    const tl = $("#t-last"); tl.replaceChildren();
+    if(!n) tl.append(el("div", {class:"empty", text:"Sin registros."}));
+    else{
+      const tb = el("tbody");
+      rows.slice().sort((a,b) => b.fecha_hora.localeCompare(a.fecha_hora)).slice(0, 20).forEach(r => {
+        tb.append(el("tr", {}, [r.fecha_hora.slice(0,16).replace("T"," "), r.asesor_id, r.canal, r.categoria, r.descripcion_producto, r.motivo_texto + (r.motivo_otro_texto ? " (" + r.motivo_otro_texto + ")" : ""), r.monto_producto_soles === "" ? "—" : "S/ " + r.monto_producto_soles, r.cupo_aprox_soles === "" ? "—" : "S/ " + r.cupo_aprox_soles]
+          .map((v,i) => el("td", {class:i === 4 || i === 5 ? "wrap" : "", text:v}))));
+      });
+      tl.append(el("table", {}, [el("thead", {}, [el("tr", {}, ["Fecha","Asesor","Canal","Categoría","Producto","Motivo","Monto","Cupo"].map(h => el("th", {text:h})))]), tb]));
+    }
+    $("#btn-demo").textContent = demoN ? "Quitar datos de ejemplo" : "Cargar datos de ejemplo";
+  }
+
+  /* ---------- datos de ejemplo (claramente marcados) ---------- */
+  function makeDemo(){
+    let seed = 20261112;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const pick = a => a[Math.floor(rnd() * a.length)];
+    const out = [], now = Date.now();
+    for(let i = 0; i < 120; i++){
+      const mot = pick(CONFIG.motivos);
+      out.push({
+        id_registro:"DEMO-" + String(i + 1).padStart(3, "0"),
+        fecha_hora:new Date(now - Math.floor(rnd() * 14 * 86400000)).toISOString(),
+        asesor_id:"DEMO", canal:pick(CONFIG.canales).title, categoria:pick(CONFIG.categorias).title,
+        descripcion_producto:"Producto de ejemplo", motivo_codigo:mot.codigo, motivo_texto:mot.title, motivo_otro_texto:"",
+        monto_producto_soles:Math.round((300 + rnd() * 3200) / 10) * 10, cupo_aprox_soles:Math.round((300 + rnd() * 2700) / 10) * 10,
+        alternativa_ofrecida:"", id_cliente:"", duracion_seg:25 + Math.floor(rnd() * 40), demo:true
+      });
+    }
+    return out;
+  }
+  $("#btn-demo").addEventListener("click", () => {
+    if(store.records.some(r => r.demo)) store.records = store.records.filter(r => !r.demo);
+    else store.records = store.records.concat(makeDemo());
+    persist(); renderPanel(); renderRecent();
+  });
+
+  /* ---------- CSV ---------- */
+  const TEXTO_LIBRE = ["descripcion_producto","motivo_otro_texto","id_cliente"];
+  function csvCell(v, col){
+    let s = (v === null || v === undefined) ? "" : String(v);
+    /* evita que Excel / Sheets interpreten como fórmula un texto escrito por el asesor */
+    if(TEXTO_LIBRE.includes(col) && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    if(/[",\n;]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+  $("#btn-csv").addEventListener("click", () => {
+    const real = store.records.filter(r => !r.demo);
+    if(!real.length){ alert("Todavía no hay registros reales para exportar."); return; }
+    const lines = [COLS.join(",")].concat(real.map(r => COLS.map(c => csvCell(r[c], c)).join(",")));
+    const blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
+    const a = el("a", {href:URL.createObjectURL(blob), download:"ventas_perdidas_" + new Date().toISOString().slice(0,10) + ".csv"});
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+
+  /* ---------- borrar (doble toque) ---------- */
+  let armed = null;
+  $("#btn-clear").addEventListener("click", e => {
+    const b = e.currentTarget;
+    if(!armed){
+      b.textContent = "¿Seguro? Toca otra vez";
+      armed = setTimeout(() => { b.textContent = "Borrar todo"; armed = null; }, 4000);
+      return;
+    }
+    clearTimeout(armed); armed = null; b.textContent = "Borrar todo";
+    store = {records:[], stats:{started:0, seq:0}};
+    persist(); renderPanel(); renderRecent();
+  });
+
+  /* ---------- pestañas ---------- */
+  const tabs = ["sim","panel","guia"];
+  tabs.forEach(t => $("#tab-btn-" + t).addEventListener("click", () => {
+    tabs.forEach(x => {
+      $("#tab-" + x).hidden = x !== t;
+      $("#tab-btn-" + x).setAttribute("aria-selected", x === t ? "true" : "false");
+    });
+    if(t === "panel") renderPanel();
+  }));
+
+  $("#cols").textContent = COLS.join(",");
+  renderChat(); renderRecent(); renderPanel(); renderTimer();
+})();
+</script>
+</body>
+</html>
